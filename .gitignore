@@ -1,0 +1,10 @@
+# Private, filled-in SQL (real user ids, dates, puzzle answers). Never commit.
+supabase/members.sql
+supabase/private*.sql
+supabase/*.local.sql
+
+# Local tooling
+.claude/settings.local.json
+__pycache__/
+.DS_Store
+Thumbs.db
