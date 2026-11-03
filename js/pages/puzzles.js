@@ -5,6 +5,7 @@ import { supabase, q, friendlyError } from '../supabase.js';
 import { db, state } from '../data.js';
 import { signedUrl, upload, removeFiles } from '../storage.js';
 import { processPhoto } from '../image.js';
+import { celebrateAt } from '../magic.js';
 
 export async function render(root) {
   const box = h('div');
@@ -92,6 +93,7 @@ function openPuzzle(p, alreadySolved, reload) {
       form.hidden = true;
       reward.hidden = false;
       s.sheet.append(petals(16));
+      celebrateAt(reward, { n: 60 });
     } else {
       msg.textContent = 'Not quite — try again 💛';
       form.classList.remove('shake');

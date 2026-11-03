@@ -3,6 +3,7 @@ import { supabase, q } from '../supabase.js';
 import { db, state, authorBadge, nameOf } from '../data.js';
 import { signedUrl, upload, removeFiles } from '../storage.js';
 import { formatDateTime } from '../dates.js';
+import { celebrateAt } from '../magic.js';
 
 export async function render(root) {
   const box = h('div');
@@ -50,7 +51,10 @@ async function openLetter(l, envEl, reload) {
       .then((row) => { l.opened_at = row.opened_at; })
       .catch(toastError);
   }
-  await new Promise((r) => setTimeout(r, 380)); // let the flap animation play
+  envEl.classList.add('opening');
+  celebrateAt(envEl.querySelector('.seal'), { n: 22, haptic: true });
+  await new Promise((r) => setTimeout(r, 420)); // let the flap animation play
+  envEl.classList.remove('opening');
 
   const audio = l.audio_path ? h('audio', { controls: true, preload: 'none' }) : null;
   if (audio) signedUrl(l.audio_path).then((u) => { if (u) audio.src = u; }).catch(toastError);

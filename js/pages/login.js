@@ -1,6 +1,7 @@
 import { supabase, friendlyError } from '../supabase.js';
 import { h, trusted, petals, toast, divider } from '../ui.js';
 import { SITE_TITLE } from '../config.js';
+import { openThemePicker } from '../app.js';
 
 // A vine that grows and unfurls little leaves (decorative, inline SVG).
 const VINE = `
@@ -73,8 +74,12 @@ export function render(app) {
     toast('If that email is ours, a reset link is on its way. 💌', 'info', 6000);
   });
 
+  const themeBtn = h('button', { class: 'icon-btn login-theme', type: 'button', 'aria-label': 'Change theme', title: 'Change theme', text: '🎨' });
+  themeBtn.addEventListener('click', () => openThemePicker(themeBtn));
+
   app.replaceChildren(
     petals(14),
+    themeBtn,
     h('main', { class: 'login' },
       h('div', { class: 'login-card' },
         trusted(VINE),

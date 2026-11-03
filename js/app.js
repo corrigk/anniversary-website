@@ -4,6 +4,8 @@ import { state, loadShared } from './data.js';
 import { h, sprig, loading, toast, toastError, openSheet } from './ui.js';
 import { listThemes, applyTheme, currentTheme, initTheme, themePreview } from './theme.js';
 import { SITE_TITLE } from './config.js';
+import { start as startMagic, sparkle } from './magic.js';
+import { maybeShowIntro } from './intro.js';
 
 const app = document.getElementById('app');
 
@@ -46,6 +48,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 });
 
 (async function boot() {
+  startMagic();
   let session = null;
   try {
     ({ data: { session } } = await supabase.auth.getSession());
@@ -77,6 +80,14 @@ async function enter(user) {
     await loadShared();
   } catch (err) {
     started = false;
+    if (/session expired/i.test(err.message)) {
+      // A saved login that no longer works: clear it and start fresh.
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+      state.user = null;
+      showLogin();
+      toast('Please sign in again.');
+      return;
+    }
     app.replaceChildren(h('div', { class: 'login' }, h('div', { class: 'login-card card' },
       h('h2', {}, 'Hmm, something went wrong'),
       h('p', { class: 'muted' }, friendlyError(err)),
@@ -95,6 +106,7 @@ async function enter(user) {
   initTheme(state.settings.default_theme);
   renderShell();
   route();
+  maybeShowIntro();
 }
 
 window.addEventListener('hashchange', () => { if (view) route(); });
@@ -115,7 +127,7 @@ function renderShell() {
   const top = h('header', { class: 'topbar' },
     h('a', { class: 'brand', href: '#/' }, sprig(), SITE_TITLE),
     h('span', { class: 'spacer' }),
-    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Change theme', title: 'Change theme', onclick: openThemePicker, text: '🎨' }),
+    h('button', { class: 'icon-btn theme-btn', type: 'button', 'aria-label': 'Change theme', 'aria-haspopup': 'dialog', title: 'Change theme', onclick: (e) => openThemePicker(e.currentTarget), text: '🎨' }),
   );
   app.replaceChildren(h('div', { class: 'shell' }, top, nav, view));
 }
@@ -147,10 +159,12 @@ async function route() {
   try {
     const mod = await import(`./pages/${r.file}.js`);
     if (token !== renderToken) return;
-    const container = h('div', { class: 'page' });
+    const container = h('div', { class: 'page page-in' });
     view.replaceChildren(container);
     const c = await mod.render(container, { params });
     if (token !== renderToken) { c?.(); return; }
+    // Stagger the page's sections in, one after another.
+    [...container.children].slice(0, 10).forEach((el, i) => el.style.setProperty('--i', i));
     cleanup = typeof c === 'function' ? c : null;
     view.focus({ preventScroll: true });
   } catch (err) {
@@ -163,29 +177,61 @@ async function route() {
 // ---------------------------------------------------------------------
 // Theme picker (also opened from the More page)
 // ---------------------------------------------------------------------
-export function openThemePicker() {
-  const buttons = listThemes().map((t) => {
+// A small floating dock (not a modal), so the page stays visible behind it
+// while you flip between looks.
+let dock = null;
+export function openThemePicker(anchor) {
+  if (dock) { dock.close(); return; }
+  const prevFocus = document.activeElement;
+  const themes = listThemes();
+  const label = h('p', { class: 'dock-label', 'aria-live': 'polite' });
+  const setLabel = () => { label.textContent = themes.find((t) => t.id === currentTheme())?.label || ''; };
+  const buttons = themes.map((t) => {
     const c = themePreview(t.id);
     const b = h('button', {
-      class: 'swatch', type: 'button', 'aria-pressed': String(t.id === currentTheme()),
-      style: { background: c['--bg'] || '#fff', color: c['--text'] || '#222', fontFamily: c['--font-head'] || 'serif' },
+      class: 'swatch-dot', type: 'button', 'aria-pressed': String(t.id === currentTheme()), 'aria-label': t.label, title: t.label,
+      style: { background: `linear-gradient(135deg, ${c['--bg'] || '#fff'} 0 45%, ${c['--accent'] || '#888'} 45% 72%, ${c['--motif-color'] || '#aaa'} 72%)` },
       onclick: () => {
         applyTheme(t.id);
         buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        setLabel();
+        const r = b.getBoundingClientRect();
+        sparkle(r.left + r.width / 2, r.top + r.height / 2, 10);
       },
-    },
-      h('span', { class: 'dots', 'aria-hidden': 'true' }, ['--accent', '--accent-2', '--motif-color', '--surface'].map((k) => h('i', { style: { background: c[k] || '#ccc' } }))),
-      h('b', {}, t.label),
-    );
+    });
     return b;
   });
-  openSheet({
-    title: 'Pick a look',
-    body: h('div', {},
-      h('p', { class: 'muted small' }, 'Tap to try one on. Your choice is saved on this device.'),
-      h('div', { class: 'themes' }, buttons),
-    ),
-  });
+  const cycle = (d) => {
+    const i = themes.findIndex((t) => t.id === currentTheme());
+    buttons[(i + d + themes.length) % themes.length].click();
+  };
+  const el = h('div', { class: 'theme-dock', role: 'dialog', 'aria-label': 'Pick a look' },
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Previous look', onclick: () => cycle(-1), text: '‹' }),
+    h('div', { class: 'dock-mid' }, h('div', { class: 'dock-row' }, buttons), label),
+    h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Next look', onclick: () => cycle(1), text: '›' }),
+  );
+  setLabel();
+  const r = anchor?.getBoundingClientRect?.();
+  if (r) el.style.top = `${Math.round(r.bottom + 8)}px`;
+  document.body.append(el);
+  const onDown = (e) => { if (!el.contains(e.target) && e.target !== anchor) close(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowRight') cycle(1);
+    if (e.key === 'ArrowLeft') cycle(-1);
+  };
+  function close() {
+    el.classList.add('closing');
+    setTimeout(() => el.remove(), 180);
+    document.removeEventListener('pointerdown', onDown, true);
+    document.removeEventListener('keydown', onKey, true);
+    dock = null;
+    prevFocus?.focus?.({ preventScroll: true });
+  }
+  setTimeout(() => document.addEventListener('pointerdown', onDown, true), 0);
+  document.addEventListener('keydown', onKey, true);
+  buttons.find((b) => b.getAttribute('aria-pressed') === 'true')?.focus({ preventScroll: true });
+  dock = { close };
 }
 
 // ---------------------------------------------------------------------

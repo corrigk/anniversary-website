@@ -2,6 +2,7 @@ import { h, pageHead, empty, loading, editSheet, confirmDialog, iconBtn, toast, 
 import { supabase, q } from '../supabase.js';
 import { db, authorBadge } from '../data.js';
 import { formatDateTime } from '../dates.js';
+import { celebrateAt } from '../magic.js';
 
 export async function render(root) {
   const box = h('div');
@@ -50,6 +51,7 @@ function ticket(c, reload) {
           el.classList.add('redeemed');
           side.replaceChildren(iconBtn(`Edit “${c.title}”`, '✎', () => openForm(row, reload)));
           el.append(stamp(row, true));
+          celebrateAt(el);
           toast('Redeemed! Enjoy. 🎟️');
         } catch (err) { toastError(err); }
       },

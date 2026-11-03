@@ -2,6 +2,7 @@ import { h, pageHead, empty, loading, editSheet, iconBtn, toast, toastError } fr
 import { supabase, q } from '../supabase.js';
 import { db, authorBadge } from '../data.js';
 import { todayISO, formatDate } from '../dates.js';
+import { celebrateAt } from '../magic.js';
 
 export async function render(root) {
   const bar = h('i', { style: { width: '0%' } });
@@ -44,7 +45,8 @@ function item(r, reload) {
   return h('li', { class: `item${r.done ? ' done' : ''}` },
     h('button', {
       class: 'tick', type: 'button', role: 'checkbox', 'aria-checked': String(r.done), 'aria-label': r.text,
-      onclick: async () => {
+      onclick: async (e) => {
+        if (!r.done) celebrateAt(e.currentTarget, { n: 26 });
         try {
           await db.patch('bucket_items', r.id, r.done ? { done: false, done_on: null } : { done: true, done_on: todayISO() });
           if (!r.done) toast('Checked off! 🎉');

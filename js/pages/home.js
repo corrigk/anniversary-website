@@ -3,6 +3,7 @@ import { supabase, q } from '../supabase.js';
 import { state, myName, startDate, nameOf } from '../data.js';
 import { today, daysBetween, ymd, nextAnniversary, msUntil, ordinal, plural, greeting, formatDate, toISO } from '../dates.js';
 import { ROUTES } from '../app.js';
+import { celebrate } from '../magic.js';
 
 const TILE_NOTES = {
   timeline: 'Our story so far', letters: 'Open when…', songs: 'Our soundtrack', puzzles: 'A little game',
@@ -108,6 +109,7 @@ function heroCard(start, timers) {
       // CATHOLIC TOUCH: "ad multos annos" (to many more years). Remove this line to drop it.
       h('p', { class: 'flourish' }, 'Ad multos annos ♡'),
     );
+    setTimeout(() => celebrate(undefined, undefined, { n: 80 }), 900);
   } else {
     const parts = { d: h('b'), h: h('b'), m: h('b'), s: h('b') };
     const cd = h('div', { class: 'countdown', role: 'timer', 'aria-live': 'off' },

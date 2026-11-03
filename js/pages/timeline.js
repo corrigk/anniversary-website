@@ -4,6 +4,7 @@ import { db, authorBadge } from '../data.js';
 import { signedUrls, upload, removeFiles } from '../storage.js';
 import { processPhoto } from '../image.js';
 import { formatDate, monthName, parseDate, todayISO } from '../dates.js';
+import { celebrate } from '../magic.js';
 
 const PAGE = 12;
 const MAX_PHOTOS = 6;
@@ -284,6 +285,7 @@ function openMemoryForm(m, onDone) {
         }
       }
       toast(failed ? `Saved, but ${failed} photo${failed > 1 ? 's' : ''} didn’t upload. Try adding ${failed > 1 ? 'them' : 'it'} again.` : (m ? 'Memory updated.' : 'Memory added! ♡'), failed ? 'error' : 'info');
+      if (!m && !failed) celebrate();
       onDone();
     },
   });
