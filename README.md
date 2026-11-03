@@ -80,11 +80,13 @@ still show only the login screen.
 ## Running locally
 
 ```bash
-python -m http.server 8080 --bind 127.0.0.1
+python scripts/dev_server.py 8080
 ```
 
 Then open http://localhost:8080/. ES modules need a server; opening `index.html` as
-a file won't work.
+a file won't work. This little server turns off browser caching so you always see
+your latest edits. (On GitHub Pages, changes can take up to ~10 minutes to show
+because Pages caches files.)
 
 ---
 
@@ -156,11 +158,35 @@ redeeming a coupon does **not** count as editing it.
 `#/admin` also has **Mark every letter unopened** and **Reset my puzzle progress**,
 which are handy after testing.
 
+### The magic layer
+
+`js/magic.js` adds:
+
+- **Ambient light** behind every page, different per theme: fireflies (Garden),
+  twinkling stars with the odd shooting star (Marian), rising candle embers
+  (Candlelight), floating pollen (Wildflower). Set by `--magic-kind` and
+  `--magic-rgb` / `--magic-rgb-2` in each theme block.
+- **Tap sparkles:** a tiny burst wherever you tap.
+- **Celebrations:** hearts, petals and stars burst out when you redeem a coupon,
+  solve a puzzle, check off a bucket item, open a letter, add a memory, and on the
+  anniversary itself. Android phones also get a tiny buzz.
+- **Little motion:** page sections drift in one by one, the days counter shimmers
+  like gold leaf, the header sprout sways, the active tab hops.
+
+`js/intro.js` is the **first-open welcome**: a wreath draws itself, leaves unfurl,
+and the theme's emblem appears with "For you, {name}" and an **Open it ♡** button.
+On the anniversary it says "Happy 3rd anniversary". It shows once per person per
+device; replay it from **More → Replay the welcome**.
+
+Everything turns off for phones with "Reduce motion" on, and anyone can switch the
+particles off in **More → Sparkles & fireflies**.
+
 ### Themes
 
 Four themes: **Garden** (default), **Marian**, **Candlelight**, **Wildflower**. Tap
-🎨 in the header (or More → Change the look). The choice is saved per device in
-`localStorage`. The fallback is `settings.default_theme`:
+🎨 in the header, on the login screen, or in More → Change the look. A small dock
+opens without covering the page: tap a swatch or use ‹ › (or the arrow keys) to flip
+through them live. The choice is saved per device in `localStorage`. The fallback is `settings.default_theme`:
 
 ```sql
 update public.settings set value = '"marian"' where key = 'default_theme';
