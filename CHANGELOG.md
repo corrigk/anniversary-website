@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-10 (later)
+
+- Photo framing: tap a photo in the memory form to choose what stays in view on
+  timeline cards (`js/focus.js`, `supabase/photo_focus.sql`).
+- Higher photo quality (2560px full copy, 1280px card copy, 4 photos per memory);
+  cards and memory pop-ups now show the full copy so older uploads look sharp too.
+
 ## 2026-11-10 — the night before
 
 - Secret garden (unlocks on `settings.garden_unlock_on`), Constellation of us,

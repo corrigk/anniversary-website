@@ -46,7 +46,8 @@ data and photos.
       ```
    4. `supabase/seed_placeholders.sql` (optional draft content)
    5. `supabase/extras.sql` (timed surprises and the wish jar)
-   6. `supabase/private_memories.sql`, if you have one: your **private**, gitignored
+   6. `supabase/photo_focus.sql` (lets you choose what stays in view when a photo is cropped)
+   7. `supabase/private_memories.sql`, if you have one: your **private**, gitignored
       file with the real timeline, the garden's unlock date and the extra stats.
 5. **Storage:** check that a **private** bucket named `memories` exists (the SQL
    creates it) and that it has four policies under Storage → Policies. If the SQL
@@ -179,6 +180,16 @@ which are handy after testing.
 Scheduling surprises for one evening: open **Surprises → + Add** as yourself, write the
 note, and set "Unlocks at" in your own local time. Space them out (say every 20–30
 minutes). Your scheduled notes are listed at the bottom of that page, visible only to you.
+
+### Framing photos
+
+Timeline cards show photos in a 4:3 frame, which can crop a tall photo through someone's
+head. When you add or edit a memory, **tap a photo**: the whole photo appears with a bright
+box showing what the card will show. Drag (or tap) to move the box, aim at the faces, then
+**Done**. **Centre it** puts it back. It works on photos you've already uploaded, with no
+re-upload, and the full-screen viewer always shows the whole photo. Saved per photo in
+`memory_photos.focus_x` / `focus_y` (needs `supabase/photo_focus.sql`; without it everything
+else still works and you get a note explaining what to run).
 
 ### Staying robust
 

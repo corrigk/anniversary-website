@@ -14,7 +14,7 @@ let cachedAt = 0;
 export async function loadMemories({ fresh = false } = {}) {
   if (!fresh && cache && Date.now() - cachedAt < 60000) return cache;
   const rows = await q(supabase.from('memories')
-    .select('id, happened_on, title, caption, location_text, created_by, memory_photos(id, storage_path, thumb_path, sort_order)')
+    .select('id, happened_on, title, caption, location_text, created_by, memory_photos(*)')
     .order('happened_on', { ascending: true })
     .order('created_at', { ascending: true }));
   rows.forEach((r) => r.memory_photos.sort((a, b) => a.sort_order - b.sort_order));
@@ -67,10 +67,11 @@ export async function openMemory(m, { kicker } = {}) {
   if (strip) {
     try {
       const { photoImg, lightbox } = await import('./pages/timeline.js');
+      const { focusOf } = await import('./focus.js');
       const urls = await signedUrls(photos.map((p) => p.storage_path));
       photos.forEach((p, i) => strip.append(h('button', {
         type: 'button', 'aria-label': `Open photo ${i + 1} of ${photos.length}`, onclick: () => lightbox(photos, i, m.title),
-      }, photoImg(p.storage_path, urls[p.storage_path], m.title))));
+      }, photoImg(p.storage_path, urls[p.storage_path], m.title, false, focusOf(p)))));
     } catch (err) { console.warn(err); }
   }
   return sheet;

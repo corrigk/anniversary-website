@@ -1,7 +1,8 @@
 import { h, pageHead, empty, loading, iconBtn, editSheet, confirmDialog, toast, toastError, sprig, uuid, lockScroll, unlockScroll, registerOverlay } from '../ui.js';
 import { supabase, q } from '../supabase.js';
 import { db, authorBadge } from '../data.js';
-import { signedUrls, upload, removeFiles, refreshSignedUrl } from '../storage.js';
+import { signedUrls, signedUrl, upload, removeFiles, refreshSignedUrl } from '../storage.js';
+import { openFocusPicker, focusOf, objectPosition, sameFocus, isCentred } from '../focus.js';
 import { processPhoto } from '../image.js';
 import { formatDate, monthName, parseDate, todayISO } from '../dates.js';
 import { celebrate } from '../magic.js';
@@ -60,7 +61,7 @@ export async function render(root, { params } = {}) {
     if (busy || done) return;
     busy = true;
     try {
-      let query = supabase.from('memories').select('*, memory_photos(id, storage_path, thumb_path, sort_order)')
+      let query = supabase.from('memories').select('*, memory_photos(*)')
         .order('happened_on', { ascending: opts.ascending })
         .order('created_at', { ascending: opts.ascending })
         .range(offset, offset + PAGE - 1);
@@ -114,7 +115,7 @@ function memoryCard(m, urls, onChange) {
   if (photos.length) {
     const car = h('div', { class: 'carousel' }, photos.map((p, i) => h('button', {
       type: 'button', 'aria-label': `Open photo ${i + 1} of ${photos.length}`, onclick: () => lightbox(photos, i, m.title),
-    }, photoImg(p.storage_path, urls[p.storage_path], photos.length > 1 ? `${m.title} (${i + 1})` : m.title, true))));
+    }, photoImg(p.storage_path, urls[p.storage_path], photos.length > 1 ? `${m.title} (${i + 1})` : m.title, true, focusOf(p)))));
     card.append(h('div', { style: { position: 'relative' } }, car, photos.length > 1 ? h('span', { class: 'photo-count' }, `📷 ${photos.length}`) : null));
   }
   card.append(h('div', { class: 'tl-body' },
@@ -137,9 +138,10 @@ function memoryCard(m, urls, onChange) {
 
 // An <img> for a private photo. If its signed link has expired (the page sat
 // open for hours), it quietly asks for a fresh link once.
-export function photoImg(path, url, alt, lazy = false) {
+export function photoImg(path, url, alt, lazy = false, focus = null) {
   const img = h('img', { alt, decoding: 'async' });
   if (lazy) img.loading = 'lazy';
+  if (focus) img.style.objectPosition = objectPosition(focus);
   let retried = false;
   img.addEventListener('error', async () => {
     if (retried || !path) return;
@@ -201,7 +203,8 @@ export async function lightbox(photos, start, title) {
 // ---------------------------------------------------------------------
 // Add / edit form with the photo pipeline.
 function openMemoryForm(m, onDone) {
-  const items = (m?.memory_photos || []).map((p) => ({ kind: 'existing', ...p, url: null }));
+  const items = (m?.memory_photos || []).map((p) => ({ kind: 'existing', ...p, url: null, focus: focusOf(p), origFocus: focusOf(p) }));
+  let focusFailed = false;
   const removed = [];
   const grid = h('div', { class: 'photo-grid' });
   const fileInput = h('input', { type: 'file', accept: 'image/*', multiple: true, 'aria-label': 'Add photos' });
@@ -209,8 +212,12 @@ function openMemoryForm(m, onDone) {
   function renderGrid() {
     const tiles = items.map((it, i) => {
       const img = it.kind === 'existing' ? it.url : it.preview;
+      const pic = img ? h('img', { src: img, alt: `Photo ${i + 1}`, style: it.focus ? { objectPosition: objectPosition(it.focus) } : null }) : null;
       return h('div', { class: 'photo-tile' },
-        img ? h('img', { src: img, alt: `Photo ${i + 1}` }) : h('div', { class: 'busy' }, it.status === 'processing' ? 'Preparing…' : ''),
+        pic ? h('button', {
+          class: 'frame-btn', type: 'button', 'aria-label': `Frame photo ${i + 1}: choose what stays in view`,
+          onclick: () => frame(it),
+        }, pic, h('span', { class: `frame-tag${it.focus ? ' set' : ''}`, 'aria-hidden': 'true' }, it.focus ? '✥ framed' : '✥ frame')) : h('div', { class: 'busy' }, it.status === 'processing' ? 'Preparing…' : ''),
         h('div', { class: 'ctrl' },
           h('button', { type: 'button', 'aria-label': `Move photo ${i + 1} earlier`, disabled: i === 0, onclick: () => { move(i, -1); }, text: '◀' }),
           h('button', { type: 'button', 'aria-label': `Remove photo ${i + 1}`, onclick: () => { removeAt(i); }, text: '✕' }),
@@ -222,6 +229,11 @@ function openMemoryForm(m, onDone) {
       tiles.push(h('label', { class: 'photo-add' }, fileInput, h('span', {}, '＋', h('br'), 'Add photos')));
     }
     grid.replaceChildren(...tiles);
+  }
+  async function frame(it) {
+    let src = it.kind === 'existing' ? it.url : it.preview;
+    if (it.kind === 'existing' && it.storage_path) { try { src = (await signedUrl(it.storage_path)) || src; } catch { /* use the small copy */ } }
+    openFocusPicker({ src, alt: 'Photo to frame', focus: it.focus, onDone: (f) => { it.focus = f; renderGrid(); } });
   }
   function move(i, d) { const j = i + d; [items[i], items[j]] = [items[j], items[i]]; renderGrid(); }
   function removeAt(i) {
@@ -260,9 +272,16 @@ function openMemoryForm(m, onDone) {
   }
   renderGrid();
 
+  // Framing is saved separately, so a missing database column never blocks a memory from saving.
+  async function saveFocus(id, f) {
+    try { await db.patch('memory_photos', id, { focus_x: f ? f.x : null, focus_y: f ? f.y : null }); }
+    catch (err) { console.warn(err); focusFailed = true; }
+  }
+
   const photoField = h('div', { class: 'field' },
     h('span', {}, 'Photos ', h('span', { class: 'muted small', style: { fontWeight: 400 } }, `(up to ${MAX_PHOTOS}, saved in high quality)`)),
-    grid);
+    grid,
+    h('span', { class: 'hint' }, 'Tap a photo to choose what stays in view when the timeline crops it.'));
 
   editSheet({
     title: m ? 'Edit memory' : 'New memory',
@@ -293,6 +312,7 @@ function openMemoryForm(m, onDone) {
       for (const [i, it] of items.entries()) {
         if (it.kind === 'existing') {
           if (it.sort_order !== i) await db.patch('memory_photos', it.id, { sort_order: i });
+          if (!sameFocus(it.focus, it.origFocus)) await saveFocus(it.id, it.focus);
           continue;
         }
         if (it.status !== 'ready') continue;
@@ -301,7 +321,8 @@ function openMemoryForm(m, onDone) {
         try {
           await upload(`${base}.jpg`, it.full, 'image/jpeg');
           await upload(`${base}_thumb.jpg`, it.thumb, 'image/jpeg');
-          await db.insert('memory_photos', { memory_id: memory.id, storage_path: `${base}.jpg`, thumb_path: `${base}_thumb.jpg`, sort_order: i });
+          const saved = await db.insert('memory_photos', { memory_id: memory.id, storage_path: `${base}.jpg`, thumb_path: `${base}_thumb.jpg`, sort_order: i });
+          if (!isCentred(it.focus)) await saveFocus(saved.id, it.focus);
           URL.revokeObjectURL(it.preview);
         } catch (err) {
           failed++;
@@ -309,6 +330,7 @@ function openMemoryForm(m, onDone) {
           removeFiles([`${base}.jpg`, `${base}_thumb.jpg`]).catch(() => {});
         }
       }
+      if (focusFailed) toast('Saved, but photo framing needs one small database step first (run supabase/photo_focus.sql).', 'error', 7000);
       toast(failed ? `Saved, but ${failed} photo${failed > 1 ? 's' : ''} didn’t upload. Try adding ${failed > 1 ? 'them' : 'it'} again.` : (m ? 'Memory updated.' : 'Memory added! ♡'), failed ? 'error' : 'info');
       if (!m && !failed) celebrate();
       onDone();
