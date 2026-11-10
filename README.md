@@ -106,8 +106,9 @@ because Pages caches files.)
 | Themes (one CSS block each) | `css/themes.css` |
 | Everything else visual | `css/base.css`, `css/extras.css` |
 
-- **Photos:** resized in the browser to a max of 1600px (JPEG ~0.8, usually
-  200–450 KB) plus a 480px thumbnail, then uploaded to the private bucket as
+- **Photos:** resized in the browser to a max of 2560px (JPEG quality 0.92, usually
+  0.6–1.5 MB) plus a 1280px display copy (quality 0.88, used on cards), up to 4 per memory,
+  then uploaded to the private bucket as
   `{memory_id}/{uuid}.jpg` and `{memory_id}/{uuid}_thumb.jpg`. They are shown only
   through signed URLs (valid 1 hour, cached ~55 min). Re-encoding also strips
   EXIF/GPS data. Deleting a memory deletes its files.
@@ -256,7 +257,7 @@ files. Animations switch off when the phone has "Reduce motion" turned on.
 - **Puzzle answers can't be set from the app**, only from the SQL editor, so they
   stay completely out of the browser. (A write-only "set answer" RPC would be easy to
   add later if that's annoying.)
-- **Thumbnails are 480px**, not 400px, so photos stay sharp on high-density phone screens.
+- **Photo quality over quantity:** 2560px / 0.92 full copies, a 1280px display copy for cards, and a limit of 4 photos per memory. Roughly 1.5 MB of the 1 GB free storage per photo, so ~600 photos fit.
 - **Relationship start date** is not in the repo. It lives only in `settings`
   (via your private `members.sql`).
 - **Password reset** uses Supabase's implicit flow, so the email link works even if

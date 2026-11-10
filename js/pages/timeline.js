@@ -8,7 +8,7 @@ import { celebrate } from '../magic.js';
 import { forgetMemories } from '../memories.js';
 
 const PAGE = 12;
-const MAX_PHOTOS = 6;
+const MAX_PHOTOS = 4; // fewer, better photos per memory
 
 export async function render(root, { params } = {}) {
   const y = params?.get('year') || '';
@@ -261,7 +261,7 @@ function openMemoryForm(m, onDone) {
   renderGrid();
 
   const photoField = h('div', { class: 'field' },
-    h('span', {}, 'Photos ', h('span', { class: 'muted small', style: { fontWeight: 400 } }, `(up to ${MAX_PHOTOS}, resized automatically)`)),
+    h('span', {}, 'Photos ', h('span', { class: 'muted small', style: { fontWeight: 400 } }, `(up to ${MAX_PHOTOS}, saved in high quality)`)),
     grid);
 
   editSheet({

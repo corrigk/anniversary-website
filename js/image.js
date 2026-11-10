@@ -1,5 +1,7 @@
 // Client-side photo processing before upload:
-// decode -> orientation fixed -> longest edge <= 1600px -> JPEG ~0.8, plus a thumbnail.
+// decode -> orientation fixed -> longest edge <= 2560px -> JPEG at quality 0.92 (the
+// full copy, shown in the full-screen viewer), plus a 1280px "display" copy at 0.88
+// (shown on timeline cards, in the garden and in memory pop-ups: sharp on a phone).
 // Re-encoding through a canvas also strips EXIF metadata (including GPS).
 //
 // Orientation: every browser this site targets (iOS Safari 13.4+, Chrome 81+,
@@ -7,9 +9,11 @@
 // drawImage() draws the upright image, so no manual rotation is needed (and
 // rotating again would turn the photo sideways).
 
-export const FULL_EDGE = 1600;
-export const THUMB_EDGE = 480;
-const TARGET_BYTES = 500 * 1024;
+export const FULL_EDGE = 2560;
+export const THUMB_EDGE = 1280; // the "thumb" is the card-sized display copy, not a tiny preview
+const FULL_QUALITY = 0.92;
+const THUMB_QUALITY = 0.88;
+const MAX_FULL_BYTES = 4 * 1024 * 1024; // only squeeze harder if a photo is unusually heavy
 
 export async function processPhoto(file) {
   const img = await decode(file);
@@ -17,11 +21,11 @@ export async function processPhoto(file) {
   if (!w || !hgt) throw unreadable(file);
 
   const full = drawScaled(img, w, hgt, FULL_EDGE);
-  let fullBlob = await toJpeg(full, 0.8);
-  if (fullBlob.size > TARGET_BYTES) fullBlob = await toJpeg(full, 0.7);
+  let fullBlob = await toJpeg(full, FULL_QUALITY);
+  if (fullBlob.size > MAX_FULL_BYTES) fullBlob = await toJpeg(full, 0.85);
 
   const thumb = drawScaled(full, full.width, full.height, THUMB_EDGE);
-  const thumbBlob = await toJpeg(thumb, 0.78);
+  const thumbBlob = await toJpeg(thumb, THUMB_QUALITY);
 
   full.width = full.height = 0; // free memory on iOS
   return { full: fullBlob, thumb: thumbBlob, preview: URL.createObjectURL(thumbBlob), width: w, height: hgt };
