@@ -32,6 +32,8 @@ export async function render(root) {
         h('section', { class: 'card' },
           h('h2', {}, 'Resets'),
           h('div', { class: 'stack' },
+            h('a', { class: 'btn ghost block', href: '#/garden?peek=1' }, 'Preview the secret garden'),
+            h('button', { class: 'btn ghost block', type: 'button', text: 'Reset my garden blooms, scratch-offs and welcome (this device)', onclick: resetLocal }),
             h('button', { class: 'btn ghost block', type: 'button', text: 'Mark every letter unopened', onclick: resetLetters }),
             h('button', { class: 'btn ghost block', type: 'button', text: 'Reset MY puzzle progress', onclick: resetPuzzles }),
           ),
@@ -73,6 +75,14 @@ export async function render(root) {
       toast('Placeholders removed.');
     } catch (err) { toastError(err); }
     load();
+  }
+
+  async function resetLocal() {
+    if (!(await confirmDialog('On this device only: flowers go back to buds, coupons get their foil back, and the welcome plays again.', { ok: 'Reset' }))) return;
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith('bh-garden-') || k.startsWith('bh-welcomed-') || k === 'bh-scratched').forEach((k) => localStorage.removeItem(k));
+      toast('Reset on this device.');
+    } catch (err) { toastError(err); }
   }
 
   async function resetLetters() {

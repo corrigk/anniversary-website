@@ -1,16 +1,18 @@
-import { h, pageHead, empty, loading, iconBtn, editSheet, confirmDialog, toast, toastError, sprig, uuid } from '../ui.js';
+import { h, pageHead, empty, loading, iconBtn, editSheet, confirmDialog, toast, toastError, sprig, uuid, lockScroll, unlockScroll, registerOverlay } from '../ui.js';
 import { supabase, q } from '../supabase.js';
 import { db, authorBadge } from '../data.js';
-import { signedUrls, upload, removeFiles } from '../storage.js';
+import { signedUrls, upload, removeFiles, refreshSignedUrl } from '../storage.js';
 import { processPhoto } from '../image.js';
 import { formatDate, monthName, parseDate, todayISO } from '../dates.js';
 import { celebrate } from '../magic.js';
+import { forgetMemories } from '../memories.js';
 
 const PAGE = 12;
 const MAX_PHOTOS = 6;
 
-export async function render(root) {
-  const opts = { ascending: false, year: '', search: '' };
+export async function render(root, { params } = {}) {
+  const y = params?.get('year') || '';
+  const opts = { ascending: false, year: /^\d{4}$/.test(y) ? y : '', search: '' };
   let offset = 0;
   let done = false;
   let busy = false;
@@ -46,6 +48,7 @@ export async function render(root) {
   }
 
   async function reload() {
+    forgetMemories();
     offset = 0; done = false; lastYear = lastMonth = null;
     list.replaceChildren(loading('Turning the pages…'));
     more.replaceChildren();
@@ -111,7 +114,7 @@ function memoryCard(m, urls, onChange) {
   if (photos.length) {
     const car = h('div', { class: 'carousel' }, photos.map((p, i) => h('button', {
       type: 'button', 'aria-label': `Open photo ${i + 1} of ${photos.length}`, onclick: () => lightbox(photos, i, m.title),
-    }, h('img', { src: urls[p.thumb_path || p.storage_path] || '', alt: photos.length > 1 ? `${m.title} (${i + 1})` : m.title, loading: 'lazy', decoding: 'async' }))));
+    }, photoImg(p.thumb_path || p.storage_path, urls[p.thumb_path || p.storage_path], photos.length > 1 ? `${m.title} (${i + 1})` : m.title, true))));
     card.append(h('div', { style: { position: 'relative' } }, car, photos.length > 1 ? h('span', { class: 'photo-count' }, `📷 ${photos.length}`) : null));
   }
   card.append(h('div', { class: 'tl-body' },
@@ -132,6 +135,21 @@ function memoryCard(m, urls, onChange) {
   return card;
 }
 
+// An <img> for a private photo. If its signed link has expired (the page sat
+// open for hours), it quietly asks for a fresh link once.
+export function photoImg(path, url, alt, lazy = false) {
+  const img = h('img', { alt, decoding: 'async' });
+  if (lazy) img.loading = 'lazy';
+  let retried = false;
+  img.addEventListener('error', async () => {
+    if (retried || !path) return;
+    retried = true;
+    try { const fresh = await refreshSignedUrl(path); if (fresh) img.src = fresh; } catch { /* stays blank */ }
+  });
+  if (url) img.src = url;
+  return img;
+}
+
 async function deleteMemory(m) {
   const photos = m.memory_photos || await q(supabase.from('memory_photos').select('storage_path, thumb_path').eq('memory_id', m.id));
   await removeFiles(photos.flatMap((p) => [p.storage_path, p.thumb_path]));
@@ -140,11 +158,16 @@ async function deleteMemory(m) {
 
 // ---------------------------------------------------------------------
 // Lightbox: full-size photos, swipe (scroll-snap), arrows, Escape.
-async function lightbox(photos, start, title) {
+export async function lightbox(photos, start, title) {
   const prevFocus = document.activeElement;
   const track = h('div', { class: 'lb-track' });
   const count = h('div', { class: 'lb-count', 'aria-live': 'polite' });
-  const close = () => { box.remove(); document.removeEventListener('keydown', onKey, true); document.body.style.overflow = ''; prevFocus?.focus?.(); };
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    box.remove(); document.removeEventListener('keydown', onKey, true); unregister(); unlockScroll(); prevFocus?.focus?.();
+  };
   const go = (d) => track.scrollBy({ left: d * track.clientWidth, behavior: 'smooth' });
   const closeBtn = iconBtn('Close photos', '✕', close);
   closeBtn.classList.add('lb-close');
@@ -160,14 +183,16 @@ async function lightbox(photos, start, title) {
     if (e.key === 'ArrowLeft') go(-1);
   }
   document.addEventListener('keydown', onKey, true);
-  document.body.style.overflow = 'hidden';
+  const unregister = registerOverlay(close);
+  lockScroll();
   document.body.append(box);
   closeBtn.focus();
 
   let urls = {};
   try { urls = await signedUrls(photos.map((p) => p.storage_path)); } catch (err) { toastError(err); }
+  if (closed) return;
   photos.forEach((p, i) => track.append(h('figure', {},
-    h('img', { src: urls[p.storage_path] || '', alt: photos.length > 1 ? `${title} (${i + 1} of ${photos.length})` : title, decoding: 'async' }))));
+    photoImg(p.storage_path, urls[p.storage_path], photos.length > 1 ? `${title} (${i + 1} of ${photos.length})` : title))));
   const update = () => { count.textContent = `${Math.round(track.scrollLeft / Math.max(1, track.clientWidth)) + 1} / ${photos.length}`; };
   track.addEventListener('scroll', update, { passive: true });
   requestAnimationFrame(() => { track.scrollLeft = start * track.clientWidth; update(); });

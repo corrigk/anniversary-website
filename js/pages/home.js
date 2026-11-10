@@ -1,14 +1,16 @@
 import { h, divider, petals, countUp, toastError } from '../ui.js';
 import { supabase, q } from '../supabase.js';
-import { state, myName, startDate, nameOf } from '../data.js';
+import { state, myName, startDate, nameOf, gardenUnlocked } from '../data.js';
 import { today, daysBetween, ymd, nextAnniversary, msUntil, ordinal, plural, greeting, formatDate, toISO } from '../dates.js';
 import { ROUTES } from '../app.js';
 import { celebrate } from '../magic.js';
+import { loadMemories, onThisDay, agoLabel, openMemory } from '../memories.js';
+import { unseenSurprises } from '../surprise-watch.js';
 
 const TILE_NOTES = {
   timeline: 'Our story so far', letters: 'Open when…', songs: 'Our soundtrack', puzzles: 'A little game',
   reasons: 'Why I love you', coupons: 'Redeem anytime', bucket: 'Someday, together', countdowns: 'Things to look forward to',
-  stats: 'Watch us grow',
+  stats: 'Watch us grow', surprises: 'Right on time', constellation: 'Written in the stars', wishes: 'Make a wish',
 };
 
 export async function render(root) {
@@ -26,6 +28,12 @@ export async function render(root) {
     root.append(heroCard(start, timers));
   }
 
+  // Slots that fill in once their data arrives.
+  const surpriseSlot = h('div');
+  const daySlot = h('div');
+  root.querySelector('.hello').after(surpriseSlot);
+  root.append(daySlot);
+
   // Random reason
   const quote = h('p', { class: 'quote' }, '…');
   const by = h('p', { class: 'badge', style: { justifyContent: 'center', display: 'flex' } });
@@ -39,6 +47,13 @@ export async function render(root) {
   const tiles = Object.entries(ROUTES).filter(([, r]) => r.nav === 'tab' || r.nav === 'extra').filter(([k]) => k);
   const tileEls = tiles.map(([k, r]) => h('a', { class: 'tile', href: `#/${k}` },
     h('span', { class: 'emo', 'aria-hidden': 'true' }, r.emoji), h('b', {}, r.title), h('span', { class: 'muted' }, TILE_NOTES[k] || '')));
+  if (gardenUnlocked()) {
+    let visited = false;
+    try { visited = !!localStorage.getItem(`bh-garden-${state.user.id}`); } catch { /* ignore */ }
+    tileEls.unshift(h('a', { class: `tile garden-tile${visited ? '' : ' fresh'}`, href: '#/garden' },
+      h('span', { class: 'emo', 'aria-hidden': 'true' }, '🌸'), h('b', {}, 'The secret garden'),
+      h('span', { class: 'muted' }, visited ? 'Every memory, in bloom' : 'Something just bloomed…')));
+  }
   if (state.settings.finale_unlock_at) {
     tileEls.push(h('a', { class: 'tile', href: '#/finale' }, h('span', { class: 'emo', 'aria-hidden': 'true' }, '🎁'), h('b', {}, 'A surprise'), h('span', { class: 'muted' }, 'Not yet… or is it?')));
   }
@@ -74,7 +89,27 @@ export async function render(root) {
     toastError(err);
   }
 
-  return () => timers.forEach(clearInterval);
+  // New surprises waiting, and "on this day". Both are extras: stay quiet if they fail.
+  const refreshSurprises = () => unseenSurprises().then((n) => {
+    surpriseSlot.replaceChildren(n ? h('a', { class: 'card surprise-banner', href: '#/surprises' },
+      h('span', { class: 'emo', 'aria-hidden': 'true' }, '💝'),
+      h('span', { class: 'grow' }, h('b', {}, n === 1 ? 'A little surprise is waiting for you' : `${n} little surprises are waiting for you`), h('span', { class: 'muted small', style: { display: 'block' } }, 'Tap to open')),
+      h('span', { class: 'chev', 'aria-hidden': 'true' }, '›')) : '');
+  }).catch(() => {});
+  refreshSurprises();
+  window.addEventListener('bh:surprise', refreshSurprises);
+
+  loadMemories().then((rows) => {
+    const { exact, items } = onThisDay(rows);
+    if (!items.length) return;
+    daySlot.replaceChildren(h('section', { class: 'card thisday', 'aria-label': exact ? 'On this day' : 'This week in our story' },
+      h('p', { class: 'kicker' }, exact ? '✦ On this day in our story' : '✦ This week in our story'),
+      items.slice(0, 3).map((m) => h('button', { class: 'thisday-item', type: 'button', onclick: () => openMemory(m, { kicker: agoLabel(m) }) },
+        h('span', { class: 'grow' }, h('b', {}, m.title), h('span', { class: 'muted small', style: { display: 'block' } }, `${agoLabel(m)} · ${formatDate(m.happened_on)}`)),
+        h('span', { class: 'chev', 'aria-hidden': 'true' }, '›')))));
+  }).catch(() => {});
+
+  return () => { timers.forEach(clearInterval); window.removeEventListener('bh:surprise', refreshSurprises); };
 }
 
 function heroCard(start, timers) {

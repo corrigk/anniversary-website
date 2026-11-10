@@ -3,6 +3,8 @@
 // you tap, and celebration bursts. Two fixed canvases, pointer-events: none.
 // Everything switches off with "Reduce motion" or the Sparkles toggle in More.
 
+import { chime } from './sound.js';
+
 const KEY = 'bh-magic';
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -260,7 +262,8 @@ export function sparkle(x, y, n = 7) {
 // A big celebration: hearts, petals and stars bloom out of a point (or the
 // middle of the screen) and drift down. Used for redeeming, solving, etc.
 export function celebrate(x = W / 2, y = H * 0.4, { n = 46, haptic = true } = {}) {
-  if (haptic && navigator.vibrate) { try { navigator.vibrate([12, 40, 18]); } catch { /* ignore */ } }
+  if (haptic && navigator.vibrate && navigator.userActivation?.hasBeenActive !== false) { try { navigator.vibrate([12, 40, 18]); } catch { /* ignore */ } }
+  if (n >= 30) chime('celebrate');
   if (!running) return;
   const cs = getComputedStyle(document.documentElement);
   const hex = (v) => {

@@ -1,8 +1,9 @@
 import { h, pageHead, empty, loading, editSheet, confirmDialog, iconBtn, toast, toastError } from '../ui.js';
 import { supabase, q } from '../supabase.js';
-import { db, authorBadge } from '../data.js';
+import { db, authorBadge, state } from '../data.js';
 import { formatDateTime } from '../dates.js';
 import { celebrateAt } from '../magic.js';
+import { addScratchLayer, isScratched } from '../scratch.js';
 
 export async function render(root) {
   const box = h('div');
@@ -58,6 +59,10 @@ function ticket(c, reload) {
     }));
   }
   side.append(iconBtn(`Edit “${c.title}”`, '✎', () => openForm(c, reload)));
+  // A coupon someone made FOR you starts under scratch-off foil.
+  if (!c.redeemed && c.created_by && c.created_by !== state.user.id && !isScratched(c.id)) {
+    addScratchLayer(el, c.id, () => celebrateAt(el, { n: 22 }));
+  }
   return el;
 }
 

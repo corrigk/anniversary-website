@@ -1,7 +1,7 @@
 // Shared app state: the signed-in user, both profiles and the settings table.
 import { supabase, q } from './supabase.js';
 import { h } from './ui.js';
-import { parseDate } from './dates.js';
+import { parseDate, today, daysBetween } from './dates.js';
 
 export const state = {
   user: null,
@@ -25,6 +25,13 @@ export const isMine = (row) => row?.created_by && row.created_by === state.user?
 
 export function startDate() {
   return parseDate(state.settings.relationship_start);
+}
+
+// The secret garden opens on settings.garden_unlock_on ("YYYY-MM-DD") and
+// stays open afterwards. With no setting, it is simply open.
+export function gardenUnlocked() {
+  const on = parseDate(state.settings.garden_unlock_on);
+  return !on || daysBetween(on, today()) >= 0;
 }
 
 export function authorBadge(createdBy) {

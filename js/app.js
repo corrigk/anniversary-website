@@ -1,11 +1,13 @@
 // Entry point: auth, the app shell, and the hash router (#/timeline).
 import { supabase, friendlyError } from './supabase.js';
 import { state, loadShared } from './data.js';
-import { h, sprig, loading, toast, toastError, openSheet } from './ui.js';
+import { h, sprig, loading, toast, toastError, openSheet, closeOverlays } from './ui.js';
 import { listThemes, applyTheme, currentTheme, initTheme, themePreview } from './theme.js';
 import { SITE_TITLE } from './config.js';
 import { start as startMagic, sparkle } from './magic.js';
 import { maybeShowIntro } from './intro.js';
+import { startSurpriseWatch, stopSurpriseWatch } from './surprise-watch.js';
+import { initSound } from './sound.js';
 
 const app = document.getElementById('app');
 
@@ -20,8 +22,12 @@ export const ROUTES = {
   coupons:     { file: 'coupons',    title: 'Coupons',      emoji: '🎟️', nav: 'extra' },
   bucket:      { file: 'bucket',     title: 'Bucket list',  emoji: '✅', nav: 'extra' },
   countdowns:  { file: 'countdowns', title: 'Countdowns',   emoji: '⏳', nav: 'extra' },
+  surprises:   { file: 'surprises',  title: 'Surprises',    emoji: '💝', nav: 'extra' },
+  constellation: { file: 'constellation', title: 'Constellation', emoji: '✨', nav: 'extra' },
+  wishes:      { file: 'wishes',     title: 'Wish jar',     emoji: '🫙', nav: 'extra' },
   stats:       { file: 'stats',      title: 'Our stats',    emoji: '🌱', nav: 'extra' },
   more:        { file: 'more',       title: 'More',         emoji: '☰',  nav: 'more' },
+  garden:      { file: 'garden',     title: 'Secret garden', emoji: '🌸', nav: null },
   finale:      { file: 'finale',     title: 'A surprise',   emoji: '🎁', nav: null },
   admin:       { file: 'admin',      title: 'Admin',        emoji: '🔧', nav: null },
 };
@@ -42,13 +48,15 @@ supabase.auth.onAuthStateChange((event, session) => {
   // Never await Supabase calls inside this callback (supabase-js can deadlock); defer instead.
   setTimeout(() => {
     if (event === 'PASSWORD_RECOVERY') showNewPassword();
-    else if (event === 'SIGNED_OUT') { state.user = null; started = false; showLogin(); }
+    else if (event === 'SIGNED_OUT') { state.user = null; started = false; stopSurpriseWatch(); showLogin(); }
     else if (event === 'SIGNED_IN' && session && !started) enter(session.user);
   }, 0);
 });
 
 (async function boot() {
   startMagic();
+  initSound();
+  registerServiceWorker();
   let session = null;
   try {
     ({ data: { session } } = await supabase.auth.getSession());
@@ -107,9 +115,21 @@ async function enter(user) {
   renderShell();
   route();
   maybeShowIntro();
+  startSurpriseWatch();
 }
 
 window.addEventListener('hashchange', () => { if (view) route(); });
+
+// A gentle banner while the phone has no connection.
+const netBanner = h('div', { class: 'net-banner', role: 'status', hidden: true }, 'You’re offline. Everything will be right here when you’re back. 🌙');
+document.body.append(netBanner);
+const syncNet = () => { netBanner.hidden = navigator.onLine !== false; };
+window.addEventListener('offline', syncNet);
+window.addEventListener('online', () => { syncNet(); if (view) toast('Back online ✨'); });
+syncNet();
+
+// Nothing should ever fail silently: log anything that slips through.
+window.addEventListener('unhandledrejection', (e) => console.warn('Unhandled:', e.reason));
 
 // ---------------------------------------------------------------------
 // Shell + router
@@ -144,6 +164,8 @@ async function route() {
   const token = ++renderToken;
   try { cleanup?.(); } catch (e) { console.warn(e); }
   cleanup = null;
+  closeOverlays(); // e.g. the back button was pressed with a sheet or photo open
+  dock?.close();
 
   const routeKey = ROUTES[key] ? key : '';
   const moreKeys = Object.keys(ROUTES).filter((k) => ROUTES[k].nav === 'extra' || k === 'more');
@@ -263,6 +285,20 @@ function showNewPassword() {
     toast('Password updated. Welcome back!');
   });
 }
+
+// Offline shell + "Add to Home Screen" (see sw.js). Network-first, so a new
+// version is always picked up when online.
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+  const go = () => navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW:', e));
+  if (document.readyState === 'complete') go(); else window.addEventListener('load', go);
+}
+
+// Android/desktop offer an install prompt; keep it for the More page.
+export let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
+window.addEventListener('appinstalled', () => { installPrompt = null; });
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut();

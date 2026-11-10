@@ -644,3 +644,23 @@ details.group:not([open]) > summary::after { transform: rotate(-90deg); }
 .envelope.opening .flap { transform: scaleY(-1); }
 .envelope.opening .seal { animation: seal-pop .42s ease forwards; }
 @keyframes seal-pop { 40% { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 18px 6px color-mix(in srgb, var(--accent) 45%, transparent); } 100% { transform: translate(-50%, -50%) scale(0); opacity: 0; } }
+
+/* ---------- offline banner ---------- */
+.net-banner {
+  position: fixed; z-index: 85; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top) + 8px); width: max-content; max-width: 92vw;
+  padding: .5rem 1rem; border-radius: 999px; text-align: center;
+  background: var(--text); color: var(--bg); font-size: .85rem; font-weight: 700; box-shadow: var(--shadow-lg);
+}
+.toast.action { display: flex; align-items: center; gap: .7rem; padding: .5rem .5rem .5rem 1rem; }
+.toast.action .btn { background: var(--bg); color: var(--text); min-height: 40px; }
+
+/* ---------- scratch-off coupons ---------- */
+.scratch { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; touch-action: pan-y; cursor: grab; transition: opacity .5s ease; border-radius: inherit; }
+.scratch.gone { opacity: 0; pointer-events: none; }
+.scratch-reveal {
+  position: absolute; z-index: 3; right: .5rem; bottom: .35rem; min-height: 44px; padding: .1rem .9rem;
+  border: 1px solid rgb(255 255 255 / .5); border-radius: 999px; background: rgb(0 0 0 / .18); color: #fff; font-size: .75rem; font-weight: 700; cursor: pointer;
+}
+.ticket.scratchable > :not(.scratch):not(.scratch-reveal) { visibility: hidden; }
+.toast.action .btn { white-space: nowrap; flex: none; }

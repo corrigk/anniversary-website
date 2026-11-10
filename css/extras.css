@@ -1,0 +1,144 @@
+/* =====================================================================
+   Styles for the extra pages: this-day card, surprises, wish jar, the
+   secret garden and the constellation. Colours still come from themes.css
+   (except the night sky, which is always dark).
+   ===================================================================== */
+
+/* ---------- Home: surprise banner + "on this day" ---------- */
+.surprise-banner {
+  display: flex; align-items: center; gap: .8rem; text-decoration: none; color: var(--text);
+  margin-bottom: 1rem; border-color: var(--accent);
+  background: linear-gradient(120deg, var(--surface), var(--accent-3));
+  animation: banner-glow 2.4s ease-in-out infinite;
+}
+.surprise-banner .emo { font-size: 1.9rem; }
+.surprise-banner .grow { flex: 1; min-width: 0; }
+.surprise-banner .chev { color: var(--muted); font-size: 1.3rem; }
+@keyframes banner-glow { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } }
+
+.thisday { margin-top: 1rem; padding: .9rem 1rem .5rem; }
+.reason-card { margin-top: 1rem; }
+.kicker { font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 .2rem; }
+.thisday-item {
+  display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 56px; padding: .4rem 0;
+  border: 0; border-top: 1px solid var(--border); background: none; color: var(--text); text-align: left; cursor: pointer;
+}
+.thisday-item:first-of-type { border-top: 0; }
+.thisday-item b { font-family: var(--font-head); font-size: 1.15rem; font-weight: var(--head-weight); }
+.thisday-item .grow { flex: 1; min-width: 0; }
+.thisday-item .chev { color: var(--muted); font-size: 1.3rem; }
+
+.garden-tile.fresh {
+  border-color: var(--accent);
+  background: linear-gradient(140deg, var(--surface), var(--accent-3));
+  animation: banner-glow 2.4s ease-in-out infinite;
+}
+.garden-tile { grid-column: 1 / -1; min-height: 84px; }
+
+/* ---------- surprises ---------- */
+.waiting-card { margin-bottom: 1rem; }
+.waiting-card .gift { font-size: 2.6rem; line-height: 1.1; display: inline-block; animation: wiggle 2.6s ease-in-out infinite; }
+.waiting-card .when { font-family: var(--font-head); color: var(--accent); font-variant-numeric: tabular-nums; font-size: 1.15rem; }
+@keyframes wiggle { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-9deg); } 80% { transform: rotate(8deg); } 90% { transform: rotate(-4deg); } }
+.surprise + .surprise, .waiting-card + .surprise { margin-top: 1rem; }
+.surprise-head { display: flex; align-items: center; gap: .7rem; }
+.surprise-head .emo { font-size: 2rem; flex: none; }
+.surprise-head .grow { flex: 1; min-width: 0; }
+.surprise-body { font-size: 1.1rem; line-height: 1.7; margin: .8rem 0 .2rem; }
+.surprise.new { border-color: var(--accent); animation: unfold .7s cubic-bezier(.2, .9, .3, 1.05); transform-origin: top; }
+.new-chip { background: var(--accent); color: var(--on-accent); }
+
+/* ---------- wish jar ---------- */
+.jar-card { padding-top: 1.2rem; }
+.jar { width: min(60vw, 210px); height: auto; display: block; margin: 0 auto; overflow: visible; }
+.jar-glass { fill: color-mix(in srgb, var(--accent-3) 55%, transparent); stroke: var(--motif-color); stroke-width: 3; }
+.jar-lid { fill: var(--accent-2); }
+.jar-shine { fill: none; stroke: var(--surface); stroke-width: 5; stroke-linecap: round; opacity: .8; }
+.jar-wish { animation: floaty 6s ease-in-out infinite; }
+.jar-wish .halo { fill: rgb(var(--magic-rgb) / .28); }
+.jar-wish .core { fill: rgb(var(--magic-rgb)); }
+.jar-wish.alt .halo { fill: rgb(var(--magic-rgb-2) / .28); }
+.jar-wish.alt .core { fill: rgb(var(--magic-rgb-2)); }
+@keyframes floaty { 0%, 100% { transform: translate(0, 0); opacity: .75; } 35% { transform: translate(5px, -9px); opacity: 1; } 70% { transform: translate(-6px, 5px); opacity: .55; } }
+.jar.shaking { animation: shake-jar .9s ease-in-out; transform-origin: 50% 90%; }
+@keyframes shake-jar { 10%, 50%, 90% { transform: rotate(-7deg); } 30%, 70% { transform: rotate(7deg); } 100% { transform: rotate(0); } }
+.wish-text { font-family: var(--font-head); font-size: 1.45rem; line-height: 1.4; margin: .4rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------- secret garden ---------- */
+.bed-wrap { margin-top: 1.4rem; }
+.bed-year { display: flex; align-items: center; gap: .5rem; font-size: 1.6rem; color: var(--accent); margin: 0 0 .2rem; }
+.bed-year .sprig { width: 20px; height: 20px; }
+.bed {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end;
+  padding: .6rem .2rem 0;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--accent-2) 26%, var(--surface-2)) 0 12px, transparent 12px),
+    linear-gradient(to top, color-mix(in srgb, var(--motif-color) 22%, transparent), transparent 60%);
+  border-bottom: 1px solid var(--border);
+}
+.flower {
+  width: 25%; max-width: 96px; min-width: 72px; padding: 0 0 14px; border: 0; background: none; cursor: pointer; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 560px) { .flower { width: 16.6%; } }
+.flower-svg { width: 64px; height: 119px; overflow: visible; transform-origin: 50% 100%; animation: sway var(--t, 5s) ease-in-out var(--d, 0s) infinite; }
+.flower-date { font-size: .7rem; font-weight: 700; margin-top: -2px; position: relative; top: 12px; background: color-mix(in srgb, var(--surface) 80%, transparent); padding: 0 .3rem; border-radius: 6px; }
+.flower .stem { fill: none; stroke: var(--motif-color); stroke-width: 2.4; stroke-linecap: round; }
+.flower .leafy { fill: var(--motif-color); }
+.flower .bud { fill: color-mix(in srgb, var(--motif-color) 70%, var(--accent)); transition: opacity .4s ease; }
+.flower .bloom { transform: scale(0) rotate(-40deg); transition: transform .9s cubic-bezier(.3, 1.5, .5, 1); }
+.flower.open .bloom { transform: scale(1) rotate(0); }
+.flower.open .bud { opacity: 0; }
+.flower.open .flower-date { color: var(--text); }
+.flower .heart { fill: var(--accent-3); stroke: color-mix(in srgb, var(--text) 25%, transparent); stroke-width: .6; }
+.flower .shade { filter: brightness(.86); }
+.flower.fc0 .petal { fill: var(--accent); }
+.flower.fc1 .petal { fill: var(--accent-2); }
+.flower.fc2 .petal { fill: var(--petal-color); }
+.flower.fc3 .petal { fill: rgb(var(--magic-rgb)); }
+.flower.fc4 .petal { fill: rgb(var(--magic-rgb-2)); }
+.flower:not(.open):hover .bud, .flower:not(.open):focus-visible .bud { filter: brightness(1.15); }
+.flower:not(.open) .flower-svg { filter: saturate(.8); }
+.garden-finale { margin-top: 1rem; border-color: var(--accent); animation: unfold .7s cubic-bezier(.2, .9, .3, 1.05); }
+.garden-finale .sprig { width: 40px; height: 40px; }
+
+/* ---------- constellation (always a night sky) ---------- */
+.sky-wrap {
+  border-radius: calc(var(--radius) + 4px); overflow: hidden; box-shadow: var(--shadow-lg);
+  background: radial-gradient(120% 90% at 50% 0%, #27356b 0%, #141b3f 45%, #0a0e24 100%);
+}
+.sky { display: block; width: 100%; height: auto; touch-action: manipulation; cursor: pointer; }
+.sky .bg-star { fill: #dfe6ff; opacity: .5; animation: twinkle 4s ease-in-out infinite; }
+@keyframes twinkle { 50% { opacity: .1; } }
+.sky .const-line { fill: none; stroke: rgb(255 232 170 / .6); stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.sky .const-close { fill: none; stroke: rgb(255 232 170 / .45); stroke-width: 2; stroke-dasharray: 5 9; stroke-linecap: round; }
+.sky .star .halo { fill: rgb(255 236 180 / .16); }
+.sky .star .core { fill: #fff3c8; }
+.sky .star.big .core { fill: #ffe08a; }
+.sky .star { transform-box: fill-box; transform-origin: center; }
+.sky .star.selected .halo { fill: rgb(255 236 180 / .4); }
+.sky .star.selected .core { fill: #ffffff; }
+.sky .ring { fill: none; stroke: #ffe9a8; stroke-width: 2.5; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.sky .ring.pulse { animation: ring 1.6s ease-out infinite; }
+@keyframes ring { 0% { opacity: .9; transform: scale(.5); } 100% { opacity: 0; transform: scale(1.7); } }
+.sky .year-label { fill: #c9d3ff; font: 700 34px var(--font-body); letter-spacing: .04em; }
+.sky .sky-count { fill: #fff3c8; font: 600 150px var(--font-head); }
+.sky .sky-sub { fill: #d5dcff; font: 500 46px var(--font-head); font-style: italic; }
+.sky .sky-sub.small { font-size: 32px; opacity: .8; }
+.sky.animate .const-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: grow 5s cubic-bezier(.45, 0, .3, 1) forwards; }
+.sky.animate .const-close { opacity: 0; animation: appear-only 1.2s ease forwards; }
+.sky.animate .star { opacity: 0; animation: star-in .7s cubic-bezier(.3, 1.8, .5, 1) forwards; }
+.sky.animate .year-label { opacity: 0; animation: appear-only 1s ease forwards; }
+.sky.animate .sky-words { opacity: 0; animation: appear-only 1.6s ease forwards; }
+@keyframes star-in { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+@keyframes appear-only { to { opacity: 1; } }
+.const-info { margin-top: 1rem; }
+.const-info .row { margin-top: .4rem; }
+.const-caption { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; min-height: 1.5em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sky .star, .sky .year-label, .sky .sky-words, .sky .const-close { opacity: 1 !important; }
+  .sky .const-line { stroke-dashoffset: 0 !important; }
+  .flower .bloom { transition: none; }
+}

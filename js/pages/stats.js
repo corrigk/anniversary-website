@@ -63,6 +63,7 @@ export async function render(root) {
       stat(s.redeemed, 'coupons redeemed', { of: s.coupons }),
       stat(s.solved, 'puzzles you solved', { of: s.puzzles }),
     ),
+    extraStats(),
     divider(),
     h('section', { class: 'card center' },
       h('h2', {}, 'Look how we’ve grown'),
@@ -70,6 +71,21 @@ export async function render(root) {
       h('p', { class: 'muted small' }, `${plural(total, 'little thing')} planted so far. Every one helps it grow.`),
     ),
   );
+}
+
+// Hand-picked numbers from settings.extra_stats:
+// [{ "emoji": "🗺️", "value": 11, "label": "states explored together" }, ...]
+function extraStats() {
+  const list = Array.isArray(state.settings.extra_stats) ? state.settings.extra_stats : [];
+  if (!list.length) return null;
+  return h('div', {},
+    h('h2', { style: { margin: '1.5rem 0 .6rem' } }, 'And a few more'),
+    h('div', { class: 'stats-grid' }, list.map((x) => {
+      const whole = typeof x.value === 'number' && Number.isInteger(x.value);
+      const num = h('div', { class: 'num' }, whole ? '0' : String(x.value ?? ''));
+      if (whole) countUp(num, x.value);
+      return h('div', { class: 'card stat' }, x.emoji ? h('div', { 'aria-hidden': 'true', style: { fontSize: '1.4rem' } }, x.emoji) : null, num, h('div', { class: 'lbl' }, String(x.label || '')));
+    })));
 }
 
 // "Main St.", "main st" and " Main  St " count as one place.

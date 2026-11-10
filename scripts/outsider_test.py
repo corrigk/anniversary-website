@@ -1,6 +1,7 @@
 """Outsider test: act as a stranger with only the public key and no login.
 
 Every table, RPC and the storage bucket must return nothing or an error.
+(A 404 on surprises / wishes just means supabase/extras.sql hasn't been run.)
 Run from the repo root:   python scripts/outsider_test.py
 Reads the URL and key from js/config.js. Uses only the Python standard library.
 """
@@ -19,7 +20,7 @@ KEY = re.search(r"SUPABASE_KEY\s*=\s*'([^']+)'", text).group(1)
 TABLES = [
     "couple_members", "profiles", "settings", "memories", "memory_photos", "songs",
     "letters", "reasons", "coupons", "bucket_items", "countdowns", "puzzles",
-    "puzzle_answers", "puzzle_progress", "finale",
+    "puzzle_answers", "puzzle_progress", "finale", "surprises", "wishes",
 ]
 
 
@@ -66,6 +67,9 @@ results.append(("rpc check_puzzle", status >= 400 or data is False, status, data
 
 status, data = call("POST", "/rest/v1/rpc/get_finale", {})
 results.append(("rpc get_finale", is_empty(status, data), status, data))
+
+status, data = call("POST", "/rest/v1/rpc/surprises_waiting", {})
+results.append(("rpc surprises_waiting", is_empty(status, data), status, data))
 
 status, data = call("POST", "/storage/v1/object/list/memories", {"prefix": "", "limit": 10})
 results.append(("list storage bucket", is_empty(status, data), status, data))
