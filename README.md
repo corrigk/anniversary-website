@@ -45,6 +45,9 @@ data and photos.
       on conflict (key) do update set value = excluded.value;
       ```
    4. `supabase/seed_placeholders.sql` (optional draft content)
+   5. `supabase/extras.sql` (timed surprises and the wish jar)
+   6. `supabase/private_memories.sql`, if you have one: your **private**, gitignored
+      file with the real timeline, the garden's unlock date and the extra stats.
 5. **Storage:** check that a **private** bucket named `memories` exists (the SQL
    creates it) and that it has four policies under Storage → Policies. If the SQL
    editor refused to create storage policies, add them in the dashboard: one each for
@@ -69,7 +72,7 @@ This pretends to be a stranger who has the public key but no login:
 python scripts/outsider_test.py
 ```
 
-Every line must say `PASS`: all 15 tables, writes, both RPCs and the storage bucket
+Every line must say `PASS`: all 17 tables, writes, both RPCs and the storage bucket
 return nothing or an error. If every table shows HTTP 404, the SQL hasn't been run
 yet, so the pass doesn't mean anything.
 
@@ -101,7 +104,7 @@ because Pages caches files.)
 | Signed URLs, upload, delete | `js/storage.js` |
 | Photo resize/re-encode before upload | `js/image.js` |
 | Themes (one CSS block each) | `css/themes.css` |
-| Everything else visual | `css/base.css` |
+| Everything else visual | `css/base.css`, `css/extras.css` |
 
 - **Photos:** resized in the browser to a max of 1600px (JPEG ~0.8, usually
   200–450 KB) plus a 480px thumbnail, then uploaded to the private bucket as
@@ -157,6 +160,32 @@ redeeming a coupon does **not** count as editing it.
 
 `#/admin` also has **Mark every letter unopened** and **Reset my puzzle progress**,
 which are handy after testing.
+
+### The extras
+
+| Feature | Where | Notes |
+|---|---|---|
+| **Secret garden** (`#/garden`) | `js/pages/garden.js` | Every memory is a flower; tap a bud and it blooms, then opens the memory. Hidden (no tile, closed gate) until `settings.garden_unlock_on`. Preview early with `#/garden?peek=1` or from `#/admin`. Blooms are remembered per device. Optional `settings.garden_message` is shown when every flower has bloomed. |
+| **Constellation of us** (`#/constellation`) | `js/pages/constellation.js` | Every memory is a star on a heart that draws itself. Tap near a star, step with ‹ ›, or press "Play our story". |
+| **Timed surprises** (`#/surprises`) | `js/pages/surprises.js`, `js/surprise-watch.js`, `supabase/extras.sql` | Notes that unlock at a time you pick. RLS hides a note from the other person until then, so it can't be peeked at, even in dev tools. While the site is open, an arriving note is announced with a burst and an "Open it" toast, and Home shows a banner. |
+| **On this day** | `js/memories.js`, Home | Memories from today's date in earlier years (or within three days). |
+| **Scratch-off coupons** | `js/scratch.js` | Coupons the other person made for you start under foil. Rub side to side (up and down still scrolls), or press Reveal. Remembered per device. |
+| **Wish jar** (`#/wishes`) | `js/pages/wishes.js`, `supabase/extras.sql` | Drop wishes in; draw one at random. The other person's wishes stay hidden until drawn. |
+| **Soft music** | `js/sound.js` | Generated in the browser (no audio files): slow bells over a quiet drone, a different key per theme, plus chimes on celebrations. **Off by default**; More → Soft music. Phones on silent stay silent. |
+| **Install as an app** | `sw.js`, `manifest.webmanifest` | More → Add to Home Screen. The service worker is network-first, so new versions always load when online; the cache only lets the app shell open offline. On iPhone the installed app needs one more sign-in. |
+| **Extra stats** | Stats page | Cards from `settings.extra_stats`: `[{"emoji": "🗺️", "value": 11, "label": "states explored together"}]`. |
+
+Scheduling surprises for one evening: open **Surprises → + Add** as yourself, write the
+note, and set "Unlocks at" in your own local time. Space them out (say every 20–30
+minutes). Your scheduled notes are listed at the bottom of that page, visible only to you.
+
+### Staying robust
+
+- Reads are retried once on a network blip; writes never are, so nothing saves twice.
+- Photo uploads retry once. Photo links last 4 hours and re-sign themselves if they expire.
+- An offline banner appears when the phone loses its connection.
+- The phone's back button closes an open sheet or photo instead of leaving it stuck.
+- If `extras.sql` hasn't been run, the Surprises and Wish jar pages say so instead of erroring.
 
 ### The magic layer
 

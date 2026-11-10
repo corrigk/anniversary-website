@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-10 — the night before
+
+- Secret garden (unlocks on `settings.garden_unlock_on`), Constellation of us,
+  timed surprises with live arrival, "On this day" on Home, scratch-off coupons,
+  wish jar, generated soft music (off by default), install as an app with an
+  offline shell, extra stats cards.
+- New SQL: `supabase/extras.sql` (surprises, wishes, `surprises_waiting()`).
+- Bulletproofing: read and upload retries, self-renewing photo links, offline banner,
+  back button closes sheets, double-save guard, friendlier "not set up yet" messages.
+
 ## 2026-11-02 — magic
 
 - Theme dock: flip between looks live without covering the page; also on the login screen.
