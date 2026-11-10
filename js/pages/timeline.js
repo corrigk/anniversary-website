@@ -69,7 +69,7 @@ export async function render(root, { params } = {}) {
       if (s) query = query.or(`title.ilike.%${s}%,caption.ilike.%${s}%,location_text.ilike.%${s}%`);
       const rows = await q(query);
       rows.forEach((r) => r.memory_photos.sort((a, b) => a.sort_order - b.sort_order));
-      const urls = await signedUrls(rows.flatMap((r) => r.memory_photos.map((p) => p.thumb_path || p.storage_path))).catch((e) => { toastError(e); return {}; });
+      const urls = await signedUrls(rows.flatMap((r) => r.memory_photos.map((p) => p.storage_path))).catch((e) => { toastError(e); return {}; });
 
       if (first) list.replaceChildren();
       if (first && !rows.length) {
@@ -114,7 +114,7 @@ function memoryCard(m, urls, onChange) {
   if (photos.length) {
     const car = h('div', { class: 'carousel' }, photos.map((p, i) => h('button', {
       type: 'button', 'aria-label': `Open photo ${i + 1} of ${photos.length}`, onclick: () => lightbox(photos, i, m.title),
-    }, photoImg(p.thumb_path || p.storage_path, urls[p.thumb_path || p.storage_path], photos.length > 1 ? `${m.title} (${i + 1})` : m.title, true))));
+    }, photoImg(p.storage_path, urls[p.storage_path], photos.length > 1 ? `${m.title} (${i + 1})` : m.title, true))));
     card.append(h('div', { style: { position: 'relative' } }, car, photos.length > 1 ? h('span', { class: 'photo-count' }, `📷 ${photos.length}`) : null));
   }
   card.append(h('div', { class: 'tl-body' },

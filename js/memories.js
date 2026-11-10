@@ -67,10 +67,10 @@ export async function openMemory(m, { kicker } = {}) {
   if (strip) {
     try {
       const { photoImg, lightbox } = await import('./pages/timeline.js');
-      const urls = await signedUrls(photos.map((p) => p.thumb_path || p.storage_path));
+      const urls = await signedUrls(photos.map((p) => p.storage_path));
       photos.forEach((p, i) => strip.append(h('button', {
         type: 'button', 'aria-label': `Open photo ${i + 1} of ${photos.length}`, onclick: () => lightbox(photos, i, m.title),
-      }, photoImg(p.thumb_path || p.storage_path, urls[p.thumb_path || p.storage_path], m.title))));
+      }, photoImg(p.storage_path, urls[p.storage_path], m.title))));
     } catch (err) { console.warn(err); }
   }
   return sheet;
