@@ -24,6 +24,31 @@ function append(el, children) {
   }
 }
 
+// SVG element builder: s('circle', { cx: 5, cy: 5, r: 2 }).
+const SVG_NS = 'http://www.w3.org/2000/svg';
+export function s(tag, attrs = {}, ...children) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, v);
+  }
+  for (const c of children.flat(Infinity)) {
+    if (c === null || c === undefined || c === false) continue;
+    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return el;
+}
+
+// A small, stable pseudo-random number in [0, 1) from any string (so a
+// memory's flower or star looks the same every visit).
+export function seeded(str, salt = 0) {
+  let x = 2166136261 ^ salt;
+  for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 16777619); }
+  x ^= x >>> 13; x = Math.imul(x, 0x5bd1e995); x ^= x >>> 15;
+  return (x >>> 0) / 4294967296;
+}
+
 // Parse a TRUSTED, hard-coded SVG/HTML string (never user data).
 export function trusted(markup) {
   const t = document.createElement('template');
@@ -41,13 +66,37 @@ export function toast(message, type = 'info', ms = 3200) {
   box.append(t);
   setTimeout(() => t.remove(), type === 'error' ? ms + 2500 : ms);
 }
+// A toast with a button, for things worth acting on ("Open it").
+export function toastAction(message, label, onClick, ms = 14000) {
+  const box = document.getElementById('toasts');
+  const btn = h('button', { class: 'btn small', type: 'button', text: label });
+  const t = h('div', { class: 'toast action', role: 'status' }, h('span', {}, message), btn);
+  btn.addEventListener('click', () => { t.remove(); onClick(); });
+  box.append(t);
+  setTimeout(() => t.remove(), ms);
+}
 export const toastError = (err) => {
   console.warn(err);
   toast(err?.message || String(err), 'error');
 };
 
+// ---------- scroll lock (shared by sheets, the lightbox and the intro) ----------
+let locks = 0;
+export function lockScroll() { if (++locks === 1) document.body.style.overflow = 'hidden'; }
+export function unlockScroll() { locks = Math.max(0, locks - 1); if (!locks) document.body.style.overflow = ''; }
+
+// Close every open sheet / lightbox (used when the route changes, e.g. the
+// phone's back button is pressed while a sheet is open).
+const closers = new Set();
+export function closeOverlays() {
+  [...closers].forEach((fn) => { try { fn(); } catch { /* ignore */ } });
+  closers.clear();
+  locks = 0;
+  document.body.style.overflow = '';
+}
+export function registerOverlay(closeFn) { closers.add(closeFn); return () => closers.delete(closeFn); }
+
 // ---------- sheets / dialogs ----------
-let openSheets = 0;
 
 export function openSheet({ title, body, footer, onClose, dialog = false, label }) {
   const prevFocus = document.activeElement;
@@ -71,9 +120,9 @@ export function openSheet({ title, body, footer, onClose, dialog = false, label 
     closed = true;
     backdrop.remove();
     document.removeEventListener('keydown', onKey, true);
-    openSheets--;
-    if (!openSheets) document.body.style.overflow = '';
-    if (prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
+    unregister();
+    unlockScroll();
+    if (prevFocus && prevFocus.focus && document.contains(prevFocus)) prevFocus.focus({ preventScroll: true });
     onClose && onClose(result);
   }
   function onKey(e) {
@@ -87,8 +136,8 @@ export function openSheet({ title, body, footer, onClose, dialog = false, label 
   backdrop.addEventListener('mousedown', (e) => { if (e.target === backdrop) close(); });
   document.addEventListener('keydown', onKey, true);
   document.body.append(backdrop);
-  openSheets++;
-  document.body.style.overflow = 'hidden';
+  const unregister = registerOverlay(() => close());
+  lockScroll();
   requestAnimationFrame(() => {
     const first = sheet.querySelector('[autofocus], input:not([type=hidden]):not([type=file]), textarea, select');
     // Do not pop the keyboard open on phones for long forms; focus the sheet instead.
@@ -207,9 +256,11 @@ export function editSheet({ title, fields, initial = {}, onSave, onDelete, saveT
   const cancel = h('button', { class: 'btn ghost', type: 'button', text: 'Cancel' });
   const s = openSheet({ title, body: f.form, footer: [del, h('span', { class: 'spacer' }), cancel, save] });
 
+  let saving = false;
   async function submit(e) {
     e && e.preventDefault();
-    if (!f.validate()) return;
+    if (saving || !f.validate()) return; // Enter pressed twice must not save twice
+    saving = true;
     save.disabled = true;
     const label = save.textContent;
     save.textContent = 'Saving…';
@@ -220,6 +271,7 @@ export function editSheet({ title, fields, initial = {}, onSave, onDelete, saveT
       f.error.textContent = err.message || String(err);
       toastError(err);
     } finally {
+      saving = false;
       save.disabled = false;
       save.textContent = label;
     }

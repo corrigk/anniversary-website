@@ -1,7 +1,7 @@
 // The first-open welcome: a wreath draws itself, leaves unfurl, and a sealed
 // emblem waits to be tapped. Shown once per person per device; replay it from
 // More -> "Replay the welcome".
-import { h } from './ui.js';
+import { h, lockScroll, unlockScroll } from './ui.js';
 import { state, myName, startDate } from './data.js';
 import { today, nextAnniversary, ymd, ordinal } from './dates.js';
 import { celebrate } from './magic.js';
@@ -43,7 +43,7 @@ export function showIntro() {
     ),
   );
   document.body.append(box);
-  document.body.style.overflow = 'hidden';
+  lockScroll();
   setTimeout(() => open.focus({ preventScroll: true }), 1600);
 
   const finish = () => {
@@ -51,7 +51,7 @@ export function showIntro() {
     box.classList.add('opening');
     const r = box.querySelector('.wreath').getBoundingClientRect();
     celebrate(r.left + r.width / 2, r.top + r.height / 2, { n: 70 });
-    setTimeout(() => { box.remove(); document.body.style.overflow = ''; }, 1100);
+    setTimeout(() => { box.remove(); unlockScroll(); }, 1100);
   };
   open.addEventListener('click', finish, { once: true });
   box.addEventListener('keydown', (e) => { if (e.key === 'Escape') finish(); });

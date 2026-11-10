@@ -2,8 +2,8 @@
 import { supabase, friendlyError } from './supabase.js';
 import { STORAGE_BUCKET } from './config.js';
 
-const EXPIRES = 3600;              // seconds a signed URL is valid
-const TTL = (EXPIRES - 300) * 1000; // reuse for a bit less than that
+const EXPIRES = 4 * 3600;          // seconds a signed URL is valid (long enough for a slow evening of scrolling)
+const TTL = (EXPIRES - 600) * 1000; // reuse for a bit less than that
 const cache = new Map();           // path -> { url, until }
 
 const bucket = () => supabase.storage.from(STORAGE_BUCKET);
@@ -29,9 +29,21 @@ export async function signedUrl(path) {
 }
 
 export async function upload(path, blob, contentType) {
-  const { error } = await bucket().upload(path, blob, { contentType: contentType || blob.type, upsert: false, cacheControl: '3600' });
+  const opts = { contentType: contentType || blob.type, cacheControl: '3600' };
+  let { error } = await bucket().upload(path, blob, { ...opts, upsert: false });
+  if (error) {
+    // One more try on a shaky connection (upsert, in case the first attempt half-landed).
+    await new Promise((r) => setTimeout(r, 900));
+    ({ error } = await bucket().upload(path, blob, { ...opts, upsert: true }));
+  }
   if (error) throw new Error(friendlyError(error));
   return path;
+}
+
+// Forget a cached signed URL (e.g. the image failed to load) and sign it again.
+export async function refreshSignedUrl(path) {
+  cache.delete(path);
+  return signedUrl(path);
 }
 
 export async function removeFiles(paths) {
